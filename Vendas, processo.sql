@@ -1,3 +1,198 @@
+
+-- vdp20000 - Pedido de Venda (Padrão Logix)
+
+SELECT * 
+  FROM pedidos
+ WHERE cod_empresa = '66'
+   AND num_pedido = 102042
+;
+
+SELECT *
+  FROM ped_itens
+ WHERE cod_empresa = '66'
+   AND num_pedido = 102042
+;
+
+SELECT *
+  FROM ped_itens_grade
+;
+
+-- -----------------------------------------------------------------------------
+
+-- Pedido e seus itens (Padrão Logix) - NÃO GRADE
+
+SELECT *
+  FROM ped_itens pi
+  JOIN pedidos pv ON pv.cod_empresa = pi.cod_empresa AND pv.num_pedido = pi.num_pedido
+                 AND pv.cod_empresa = '66'
+                 AND pv.num_pedido = 102042
+;
+
+-- -----------------------------------------------------------------------------
+
+-- Pedido e seus itens (Padrão Logix) - GRADE
+
+SELECT *
+  FROM ped_itens pi
+  JOIN pedidos pv ON pv.cod_empresa = pi.cod_empresa AND pv.num_pedido = pi.num_pedido
+                 AND pv.cod_empresa = ''
+                 AND pv.num_pedido =  
+;
+
+-- -----------------------------------------------------------------------------
+
+SELECT * FROM pedidos;
+SELECT * FROM ped_itens;
+SELECT * FROM ped_itens_grade;
+SELECT * FROM ped_itens_grade_vkrd;
+
+-- Pedido e seus itens
+
+SELECT *
+  FROM ped_itens pi
+  JOIN pedidos pv ON pv.cod_empresa = pi.cod_empresa AND pv.num_pedido = pi.num_pedido
+                 AND pv.cod_empresa = ''
+                 AND pv.num_pedido =  
+;
+
+-- -----------------------------------------------------------------------------
+
+-- vdp20022 Auditoria de aprovação de pedidos
+
+-- -----------------------------------------------------------------------------
+
+-- vdp20028 Auditoria de manutenção de pedidos
+
+-- -----------------------------------------------------------------------------
+-- Ordens de Montagem (vdp10000 / vdp8020)
+-- -----------------------------------------------------------------------------
+
+SELECT DISTINCT ies_sit_om FROM ordem_montag_mest
+;
+-- B Bloqueada
+-- N liberada Normal
+-- F Faturada
+-- E em Embalagem (WMS)
+
+-- -----------------------------------------------------------------------------
+-- Script de ajustes
+-- -----------------------------------------------------------------------------
+
+-- As reservas tem sup_par_resv_est?
+--  Logix as vezes falha em gravar estas, se falhou, então temos que matar as reservas via banco
+
+-- Tem reservas para o Pedido em questão?
+
+-- create table bkp_estlocres171019 as
+SELECT *
+-- delete
+  FROM estoque_loc_reser
+ WHERE cod_empresa = '66'
+   AND num_docum = '102042'
+--ORDER BY num_docum, num_referencia 
+;
+
+--CREATE TABLE 
+SELECT *
+
+       -- Dimensionais reservados 
+  FROM est_loc_reser_end e
+
+       -- Reserva
+  JOIN estoque_loc_reser r
+    ON r.cod_empresa = e.cod_empresa AND r.num_reserva = e.num_reserva AND ies_origem='V' 
+
+ WHERE r.cod_empresa = '66'
+   AND r.num_docum = '102042'
+   
+ORDER BY   r.cod_empresa    
+         , r.num_docum      -- Pedido de venda (string: 6 digitos com zeros a esquerda) 
+         , r.num_referencia -- Sequencia de item do Pedido de venda ( string: 5 digitos com zeros a esquerda) 
+;
+
+-- Tem romaneio?
+SELECT om.cod_empresa, om.num_om, om.ies_sit_om
+ 
+       -- Sempre há dados nesta tabela de OM, independente se o item controla ou não grade
+  FROM ordem_montag_grade omg
+
+  JOIN ordem_montag_mest om ON om.cod_empresa = omg.cod_empresa AND om.num_om = omg.num_om
+
+  WHERE om.cod_empresa = '66'
+    AND omg.num_pedido = 102042 
+
+--ORDER BY  
+;
+
+-- VALIDAR: TENTATIVA DE ACERTO DA TABELA ITEM DO PEDIDO, COM FATOS EXISTENTES NAS TABELAS DE RESERVA E FATURAMENTO
+UPDATE ped_itens pi
+   SET 
+         pi.qtd_pecas_atend = (
+
+                              -- Soma dos itens atendidos (de NF não canceladas)
+                              
+                                SELECT nfi.qtd_item 
+                                        
+                                  FROM fat_nf_item nfi
+
+                                  JOIN fat_nf_mestre nf ON nf.empresa = nfi.empresa  AND nf.trans_nota_fiscal = nfi.trans_nota_fiscal
+                                   AND nf.tip_nota_fiscal = 'FATPRDSV'
+                                   AND nf.sit_nota_fiscal <> 'C'
+
+                                 WHERE nfi.empresa = pi.cod_empresa
+                                   AND nfi.pedido = pi.num_pedido
+                                   AND nfi.seq_item_pedido = pi.num_sequencia
+                                   AND nfi.item = pi.cod_item 
+                                
+                              )
+       , pi.qtd_pecas_reserv = Nvl (
+                                     (
+       
+                                      -- Reservas de Venda Normal (não Liquidadas)
+                                
+                                        SELECT Sum(qtd_reservada)
+
+                                          FROM estoque_loc_reser r
+
+                                        WHERE r.cod_empresa = pi.cod_empresa                                  
+                                          AND Trim(r.num_docum) = Trim(LPad(pi.num_pedido, 6, 0))
+                                          AND Trim(r.num_referencia) = Trim(LPad(pi.num_sequencia, 5, 0))
+                                          AND r.cod_item = pi.cod_item
+                                          AND r.ies_origem = 'V' -- C-Compras, V-Vendas
+                                          AND r.ies_situacao = 'N' -- N-Normal, L-Liquidada    
+                                      ),
+                                      0
+                                    )
+
+ WHERE pi.cod_empresa = '66'
+   AND pi.num_pedido = 102042
+;
+
+-- Lotes faturados
+
+SELECT nfi.*
+
+  FROM fat_nf_item nfi
+
+  JOIN fat_nf_mestre nf ON nf.empresa = nfi.empresa  AND nf.trans_nota_fiscal = nfi.trans_nota_fiscal
+   AND nf.tip_nota_fiscal = 'FATPRDSV'
+   --AND nf.sit_nota_fiscal <> 'C'
+   AND nf.empresa = '66'
+   --AND nf.cliente = '' -- CNPJ
+   AND nf.nota_fiscal = 100484
+
+       -- Relacionamento: Movimentado no Item da NF (fat_nf_item) para cada grade (tabulacao) x Tabela estoque_trans
+  JOIN fat_ctr_est_nf iet ON iet.empresa = nfi.empresa AND iet.trans_nota_fiscal = nfi.trans_nota_fiscal AND iet.seq_item_nf = nfi.seq_item_nf
+
+       -- Movimentação de estoque
+  JOIN estoque_trans et ON et.cod_empresa = iet.empresa AND et.num_transac = iet.trans_estoque
+
+       -- Movimentação de estoque (no nível de endereçamento)
+  JOIN estoque_trans_end ete ON ete.cod_empresa = et.cod_empresa AND ete.num_transac = et.num_transac
+
+ORDER BY nf.empresa, nfi.pedido, nfi.seq_item_pedido, nfi.ord_montag, nf.nota_fiscal, nfi.seq_item_nf 
+;
+ 
 -- Consulta não validada e provavelmente gerando linhas repetidas
 -- Apenas guardando ela para lembrar rapidamente do processo de vendas
 
