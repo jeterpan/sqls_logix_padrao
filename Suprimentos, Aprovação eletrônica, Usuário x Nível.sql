@@ -19,3 +19,29 @@ SELECT   cod_empresa
   FROM usuario_nivel_aut
  WHERE nom_usuario = '' -- Usuário origem
 ;
+
+-- -----------------------------------------------------------------------------
+
+-- Aprovação eletrônica SUP > Nível alçada
+
+-- sup6040 - Níveis
+SELECT *
+  FROM nivel_autoridade
+;
+
+-- sup6050 - Usuários x Nível
+SELECT *
+  FROM usuario_nivel_aut
+;
+
+-- -----------------------------------------------------------------------------
+
+-- sup6050 - Usuários x Nível
+  SELECT *
+    FROM usuario_nivel_aut
+   WHERE nom_usuario = jsilva
+     AND ies_versao_atual = 'S'
+ORDER BY cod_empresa
+;
+
+-- -----------------------------------------------------------------------------
