@@ -252,3 +252,42 @@ left JOIN fat_nf_mestre nf ON nf.empresa = ni.empresa AND nf.trans_nota_fiscal =
  ORDER BY pi.cod_empresa,
           pi.num_sequencia
 ;
+                                                                            
+                                                                            
+                                                                            SELECT * FROM pedidos
+WHERE cod_empresa = '66'
+AND ies_frete = 6
+ORDER BY num_pedido desc
+;
+
+/*
+1 - CIF Pago
+2 - CIF Cobrado
+3 - FOB
+4 - CIF informado pct.
+6 - item Tot.
+
+
+*/
+
+  SELECT cod_empresa,
+         ies_frete,
+         CASE
+          WHEN ies_frete = 1 THEN 'CIF Pago'
+          WHEN ies_frete = 2 THEN 'CIF Cobrado'
+          WHEN ies_frete = 3 THEN 'FOB'
+          WHEN ies_frete = 4 THEN 'CIF informado pct.'
+          WHEN ies_frete = 6 THEN 'item Tot.'
+         END AS tipo_frete,
+         Count( cod_empresa ),
+         Round (100 * Count(cod_empresa) / Sum (Count(cod_empresa)) OVER () , 2) percent
+
+    FROM pedidos
+
+   WHERE cod_empresa = '66'
+
+GROUP BY cod_empresa,
+         ies_frete
+
+ORDER BY 5 DESC
+;
