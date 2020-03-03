@@ -186,3 +186,20 @@ SELECT cod_empresa, 27, 'Joao da Silva', 'jsilva'
 --WHERE cod_comprador = 27
 WHERE login = 'maria'
 ;
+
+-- Levanta os Grupos de acessos de Logix que os usuários têm e que o Gestor dos mesmos não tem:
+
+WITH grupos_dos_subordinados AS (
+  SELECT DISTINCT grupo
+             FROM log_usu_grupos
+            WHERE usuario IN ('trangel','vlinares','tbarreira','acidre','amachado') -- Subordinados
+)
+
+-- Falta algum grupo para o Gestor?
+ SELECT grupo
+   FROM grupos_dos_subordinados
+  WHERE grupo NOT IN ( SELECT grupo
+                         FROM log_usu_grupos
+                        WHERE usuario = 'rramirez' -- Gestor
+                     )
+;
