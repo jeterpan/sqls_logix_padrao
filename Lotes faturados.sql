@@ -1,4 +1,4 @@
-SELECT nf.empresa, et.num_lote_orig, ete.*
+SELECT nf.empresa, et.num_lote_orig, te.*
 
   FROM fat_nf_item ni
 
@@ -15,6 +15,6 @@ SELECT nf.empresa, et.num_lote_orig, ete.*
   JOIN estoque_trans et ON et.cod_empresa = iet.empresa AND et.num_transac = iet.trans_estoque
 
        -- Movimentação de estoque (no nível de endereçamento)
-  JOIN estoque_trans_end ete ON ete.cod_empresa = et.cod_empresa AND ete.num_transac = et.num_transac
+  JOIN estoque_trans_end te ON te.cod_empresa = et.cod_empresa AND te.num_transac = et.num_transac
 ;
 
